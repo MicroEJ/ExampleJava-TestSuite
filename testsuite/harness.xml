@@ -1,0 +1,48 @@
+<!--
+	ANT
+	
+	Copyright 2013 IS2T. All rights reserved.
+	IS2T PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+-->
+<!-- 
+	This script is called from the test-suite framework. It launches a Java MicroEJ Test and
+	analyze the result with the file trace analyzer. 
+-->
+<project name="harness" default="runTest" xmlns:traceAnalyzer="antlib:com.is2t.testsuite.traceAnalyzer">
+	
+	<property file="${testsuite.test.properties}"/>
+	<property file="${testsuite.common.properties}"/>
+	
+	<fail unless="platform.dir" message="Please set the 'platform.dir' property."/>
+	
+	<!-- Import the script that defines the trace analyzer tasks  -->
+	<import file="${platform.dir}/scripts/traceAnalyzerDefinition.xml"/>
+	
+	<target name="runTest" depends="traceAnalyzer/definition">
+	
+		<!-- Create and clean microej.io.tmpdir (done by the workbench but not done when running from testsuite engine) -->
+		<delete failonerror="false"	dir="${microej.io.tmpdir}"/>
+		<mkdir dir="${microej.io.tmpdir}"/>
+		
+		<!-- Prepare the file to save the trace -->
+		<tempfile property="trace.file" prefix="trace" suffix=".txt" destdir="${microej.io.tmpdir}" deleteonexit="true"/>
+		<record name="${trace.file}" action="start" />
+				
+		<!-- Run underlying the launch -->
+		<ant antfile="${platform.dir}/scripts/s3Default.microejLaunch">
+			<property name="application.classpath" 		value="${testsuite.test.classpath}${path.separator}${application.classpath}"/>
+			<property name="application.main.class" 	value="${testsuite.test.class}"/>
+			<property name="output.dir" value="${testsuite.report.dir}/bin"/>
+			<property name="basedir" value="${platform.dir}/scripts"/>
+		</ant>	
+
+		<!-- Trace has ended -->
+		<record name="${trace.file}" action="stop" />
+
+		<!-- Analyze trace. Trace is fully generated: stop when EOF is reached -->
+		<traceAnalyzer:fileTraceAnalyzer stopEOFReached="true" traceFile="${trace.file}"/>
+	
+		<!-- If the script reaches this point, test result is success -->
+	</target>
+	
+</project>
